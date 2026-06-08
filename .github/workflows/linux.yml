@@ -11,35 +11,33 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    
     strategy:
       matrix:
         compiler: [gcc, clang]
-        
     env:
-      CC: ${{ matrix.compiler }}
+      CC: ${{ matrix.compiler == 'gcc' && 'gcc' || 'clang' }}
       CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
-      
+
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: true
           fetch-depth: 0
-      
+
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake build-essential rpm
-      
+
       - name: Configure
         run: cmake -H. -B_build -DBUILD_TESTS=ON
-      
+
       - name: Build
         run: cmake --build _build
-      
-      - name: Run tests
+
+      - name: Test
         run: ctest --test-dir _build --output-on-failure
-      
-      # CPack просто проверяет сборку пакетов внутри CI, без публикации
+
       - name: Create packages (if tag)
         if: startsWith(github.ref, 'refs/tags/')
         run: |
