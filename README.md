@@ -127,20 +127,6 @@ cd third-party/gtest && git checkout release-1.12.1
 введем классификацию тестов
 
 ```
-test_account.cpp:
-    ConstructorInitializesBalance — проверка конструктора
-    DepositIncreasesBalance — проверка пополнения
-    WithdrawDecreasesBalance — проверка снятия
-test_transaction.cpp:
-    ExecuteTransfersMoney — проверка перевода средств
-    ExecuteFailsIfInsufficientFunds — ошибка при недостатке средств
-    ExecuteFailsIfAlreadyCompleted — повторное выполнение транзакции
-    ExecuteFailsWithWrongAccounts — неверные счета
-```
-
-### 3.9 Подключение к Github Actions
-Файл .github/workflows/linux.yml:
-```
 name: Linux CI (gcc & clang)
 
 on:
@@ -157,25 +143,38 @@ jobs:
     strategy:
       matrix:
         compiler: [gcc, clang]
+    env:
+      CC: ${{ matrix.compiler == 'gcc' && 'gcc' || 'clang' }}
+      CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
+
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
-      - run: sudo apt-get update && sudo apt-get install -y cmake build-essential
-      - run: cmake -H. -B_build -DBUILD_TESTS=ON
-      - run: cmake --build _build
-      - run: ctest --test-dir _build --output-on-failure
-      - if: startsWith(github.ref, 'refs/tags/')
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential rpm
+
+      - name: Configure
+        run: cmake -H. -B_build -DBUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build _build
+
+      - name: Test
+        run: ctest --test-dir _build --output-on-failure
+
+      - name: Create packages (if tag)
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           cd _build
           cpack -G DEB
           cpack -G RPM
           cpack -G TGZ
           cpack -G ZIP
-      - if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: _build/*.deb _build/*.rpm _build/*.tar.gz _build/*.zip
 ```
 
 ### 4.0 Проверка результатов
