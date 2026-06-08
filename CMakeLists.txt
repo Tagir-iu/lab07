@@ -1,22 +1,31 @@
-cmake_minimum_required(VERSION 3.10)
-project(lab05)
+cmake_minimum_required(VERSION 3.5)
 
-option(BUILD_TESTS "Build tests" OFF)
+project(lab07)
 
-add_subdirectory(banking)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Собираем основную библиотеку из папки banking (раз у тебя там Account)
+add_library(banking_lib STATIC banking/Account.cpp banking/Transaction.cpp)
+
+# Даем библиотеке доступ к ее же заголовочным файлам
+target_include_directories(banking_lib PUBLIC banking)
+
+# Подключаем GTest
+add_subdirectory(third-party/gtest)
+
+option(BUILD_TESTS "Build tests" ON)
 
 if(BUILD_TESTS)
-    enable_testing()
-    
-    # Подключаем GTest напрямую
-    add_subdirectory(third-party/gtest)
-    
-    # Создаем тесты
-    add_executable(check tests/test_account.cpp tests/test_transaction.cpp)
-    target_link_libraries(check banking gtest gtest_main pthread)
-    target_include_directories(check PRIVATE banking third-party/gtest/googletest/include)
-    
-    add_test(NAME check COMMAND check)
+  enable_testing()
+  
+  add_executable(test1 tests/test_account.cpp tests/test_transaction.cpp)
+  
+  # Линкуем тест с библиотекой
+  target_link_libraries(test1 banking_lib gtest_main)
+  
+  # ВАЖНО: Указываем тесту, где искать заголовочные файлы
+  target_include_directories(test1 PRIVATE banking)
+  
+  add_test(NAME test1 COMMAND test1)
 endif()
-
-include(CPackConfig.cmake)
