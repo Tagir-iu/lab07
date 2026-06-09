@@ -20,9 +20,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 0
 
-      - name: Install GTest
+      - name: Initialize Submodules
+        run: git submodule update --init --recursive
+
+      - name: Install GTest (Logs for demo)
         run: |
           sudo apt-get update
           sudo apt-get install -y googletest libgtest-dev
