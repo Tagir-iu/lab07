@@ -1,98 +1,132 @@
-# lab06
-# Лабораторная работа 06
+# Отчет по лабораторной работе №7
 
-Цель работы: создание покетов для изменнени(должны сочетаться с тегами)
-Для этого нужно добавить ветлвение в конфигурационные файлы для СL.
+**Студент:** Tagir-iu  
+**Тема:** Система управления зависимостями Hunter (попытка внедрения)
 
-## 1. Настройка переменных
+---
+
+## 1. Цель работы
+
+Изучить систему управления зависимостями **Hunter** для C++ проектов, научиться подключать сторонние библиотеки (GTest) и создавать собственные пакеты.
+
+---
+
+## 2. Задание
+
+1. Настроить интеграцию Hunter в CMake проект
+2. Подключить библиотеку GTest через Hunter
+3. Написать модульные тесты для классов `Account` и `Transaction`
+4. Настроить CI через GitHub Actions
+5. Создать пакеты (DEB, RPM, TGZ, ZIP) при помечении коммита тэгом
+
+---
+
+## 3. Выполнение работы
+
+### 3.1. Структура проекта
 ```
-export GITHUB_USERNAME=Tagir-iu
-export GITHUB_EMAIL=Tagiriu@github.com
-alias edit=nano
-alias gsed=sed
-```
-
-Результат: настроили окружение для работы в терминале 
-
-## 2. Добавляем версионирование в CMakeLists.txt
-```
-gsed -i '/project(lab06)/a\ set(PRINT_VERSION_MAJOR 0)' CMakeLists.txt
-gsed -i '/project(lab06)/a\ set(PRINT_VERSION_MINOR 1)' CMakeLists.txt
-gsed -i '/project(lab06)/a\ set(PRINT_VERSION_PATCH 0)' CMakeLists.txt
-gsed -i '/project(lab06)/a\ set(PRINT_VERSION_TWEAK 0)' CMakeLists.txt
-gsed -i '/project(lab06)/a\ set(PRINT_VERSION "${PRINT_VERSION_MAJOR}.${PRINT_VERSION_MINOR}.${PRINT_VERSION_PATCH}.${PRINT_VERSION_TWEAK}")' CMakeLists.txt
-gsed -i '/project(lab06)/a\ set(PRINT_VERSION_STRING "v\\${PRINT_VERSION}")' CMakeLists.txt
-```
-## 3. Создаем DESCRIPTION и ChangeLog.md
-```
-touch DESCRIPTION && edit DESCRIPTION
-touch ChangeLog.md
-export DATE="LANG=en_US date +'%a %b %d %Y'"
-cat > ChangeLog.md <<EOF
-* ${DATE} ${GITHUB_USERNAME} <${GITHUB_EMAIL}> 0.1.0.0
-- Initial RPM release
-EOF
-
-```
-## 4. Создаем CPackConfig.cmake
-```
-cat > CPackConfig.cmake <<EOF
-include(InstallRequiredSystemLibraries)
-EOF
-
-cat >> CPackConfig.cmake <<EOF
-set(CPACK_PACKAGE_CONTACT ${GITHUB_EMAIL})
-set(CPACK_PACKAGE_VERSION_MAJOR \${PRINT_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR \${PRINT_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH \${PRINT_VERSION_PATCH})
-set(CPACK_PACKAGE_VERSION_TWEAK \${PRINT_VERSION_TWEAK})
-set(CPACK_PACKAGE_VERSION \${PRINT_VERSION})
-set(CPACK_PACKAGE_DESCRIPTION_FILE \${CMAKE_CURRENT_SOURCE_DIR}/DESCRIPTION)
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Static C++ library for printing")
-EOF
-
-cat >> CPackConfig.cmake <<EOF
-set(CPACK_RESOURCE_FILE_LICENSE \${CMAKE_CURRENT_SOURCE_DIR}/LICENSE)
-set(CPACK_RESOURCE_FILE_README \${CMAKE_CURRENT_SOURCE_DIR}/README.md)
-EOF
-
-cat >> CPackConfig.cmake <<EOF
-set(CPACK_RPM_PACKAGE_NAME "print-devel")
-set(CPACK_RPM_PACKAGE_LICENSE "MIT")
-set(CPACK_RPM_PACKAGE_GROUP "print")
-set(CPACK_RPM_CHANGELOG_FILE \${CMAKE_CURRENT_SOURCE_DIR}/ChangeLog.md)
-set(CPACK_RPM_PACKAGE_RELEASE 1)
-EOF
-
-cat >> CPackConfig.cmake <<EOF
-set(CPACK_DEBIAN_PACKAGE_NAME "libprint-dev")
-set(CPACK_DEBIAN_PACKAGE_PREDEPENDS "cmake >= 3.0")
-set(CPACK_DEBIAN_PACKAGE_RELEASE 1)
-EOF
-
-cat >> CPackConfig.cmake <<EOF
-include(CPack)
-EOF
-```
-## 4. Подключаем CPack в CMakeLists.txt
-```
-cat >> CMakeLists.txt <<EOF
-
-include(CPackConfig.cmake)
-EOF
+lab07/
+├── banking/
+│ ├── Account.h
+│ ├── Account.cpp
+│ ├── Transaction.h
+│ ├── Transaction.cpp
+│ └── CMakeLists.txt
+├── tests/
+│ ├── test_account.cpp
+│ └── test_transaction.cpp
+├── .github/workflows/
+│ └── linux.yml
+├── CMakeLists.txt
+├── CPackConfig.cmake
+├── DESCRIPTION
+├── LICENSE
+├── ChangeLog.md
+└── README.md
 ```
 
-## 5. Коммитим и пушим
+
+### 3.2. Попытка интеграции Hunter
+
+Была предпринята попытка настроить Hunter в `CMakeLists.txt`:
+
+```cmake
+cmake_minimum_required(VERSION 3.4)
+
+include("cmake/HunterGate.cmake")
+HunterGate(
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.13.tar.gz"
+    SHA1 "ef7d6ac5a4ba88307b2bea3e6ed7206c69f542e8"
+)
+
+project(lab07)
 ```
-git add .
-git commit -m "added cpack config"
-git tag v0.1.0.0
-git push origin master --tags
+### 3.3. Возникшие проблемы
+
+При попытке использования Hunter возникли следующие ошибки:
 ```
-## 6. Настраиваем GitHub Actions (вместо Travis CI)
+    Ошибка скачивания GTest — Hunter не мог скачать GTest из-за проблем с SHA1
+    Ошибка компиляции GTest — сборка GTest падала с -Werror (предупреждения трактовались как ошибки)
+    Ошибка hunter_error_page — внутренняя ошибка Hunter при скачивании пакетов
 ```
-mkdir -p .github/workflows
-cat > .github/workflows/linux.yml << 'EOF'
+### 3.4 Альтернативное решение 
+В связи с невозможностью использовать Hunter (проблемы с сетью и совместимостью), было принято решение использовать классический GTest через add_subdirectory:
+```
+if(BUILD_TESTS)
+    enable_testing()
+    
+    add_subdirectory(third-party/gtest)
+    
+    add_executable(check tests/test_account.cpp tests/test_transaction.cpp)
+    target_link_libraries(check banking gtest_main)
+    target_include_directories(check PRIVATE banking)
+    
+    add_test(NAME check COMMAND check)
+endif()
+```
+
+### 3.5 Класс Account
+```
+class Account {
+private:
+    std::string id;
+    double balance;
+public:
+    Account(const std::string& id, double initialBalance = 0.0);
+    void deposit(double amount);
+    bool withdraw(double amount);
+    double getBalance() const;
+    std::string getId() const;
+};
+```
+
+
+### 3.6 Класс Transaction
+```
+class Transaction {
+private:
+    std::string fromId;
+    std::string toId;
+    double amount;
+    bool completed;
+public:
+    Transaction(const std::string& from, const std::string& to, double amount);
+    bool execute(Account& from, Account& to);
+    bool isCompleted() const;
+    double getAmount() const;
+};
+```
+
+### 3.7 Добавляем GTest как git submodule:
+```
+git submodule add https://github.com/google/googletest third-party/gtest
+cd third-party/gtest && git checkout release-1.12.1
+```
+
+### 3.8 Проверка и анализ на модульных тестах
+введем классификацию тестов
+
+```
 name: Linux CI (gcc & clang)
 
 on:
@@ -110,25 +144,29 @@ jobs:
       matrix:
         compiler: [gcc, clang]
     env:
-      CC: ${{ matrix.compiler }}
+      CC: ${{ matrix.compiler == 'gcc' && 'gcc' || 'clang' }}
       CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
+
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: true
           fetch-depth: 0
-      
+
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake build-essential rpm
-      
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential rpm
+
       - name: Configure
         run: cmake -H. -B_build -DBUILD_TESTS=ON
-      
+
       - name: Build
         run: cmake --build _build
-      
-      - name: Run tests
+
+      - name: Test
         run: ctest --test-dir _build --output-on-failure
-      
+
       - name: Create packages (if tag)
         if: startsWith(github.ref, 'refs/tags/')
         run: |
@@ -137,44 +175,36 @@ jobs:
           cpack -G RPM
           cpack -G TGZ
           cpack -G ZIP
-      
-      - name: Upload packages to Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            _build/*.deb
-            _build/*.rpm
-            _build/*.tar.gz
-            _build/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-EOF
 ```
-При каждом push запускаются тесты
-При создании тэга v* CPack создаёт DEB, RPM, TGZ, ZIP пакеты
-Пакеты автоматически загружаются в Release на GitHub
-## 7. Коммитим GitHub Actions
+
+### 4.0 Проверка результатов
+вывод:
 ```
-git add .github/workflows/linux.yml
-git commit -m "Add GitHub Actions with CPack packaging on tags"
-git push origin master
+[==========] Running 7 tests from 2 test suites.
+[----------] 3 tests from AccountTest
+[ RUN      ] AccountTest.ConstructorInitializesBalance
+[       OK ] AccountTest.ConstructorInitializesBalance
+[ RUN      ] AccountTest.DepositIncreasesBalance
+[       OK ] AccountTest.DepositIncreasesBalance
+[ RUN      ] AccountTest.WithdrawDecreasesBalance
+[       OK ] AccountTest.WithdrawDecreasesBalance
+[----------] 3 tests from AccountTest
+
+[----------] 4 tests from TransactionTest
+[ RUN      ] TransactionTest.ExecuteTransfersMoney
+[       OK ] TransactionTest.ExecuteTransfersMoney
+[ RUN      ] TransactionTest.ExecuteFailsIfInsufficientFunds
+[       OK ] TransactionTest.ExecuteFailsIfInsufficientFunds
+[ RUN      ] TransactionTest.ExecuteFailsIfAlreadyCompleted
+[       OK ] TransactionTest.ExecuteFailsIfAlreadyCompleted
+[ RUN      ] TransactionTest.ExecuteFailsWithWrongAccounts
+[       OK ] TransactionTest.ExecuteFailsWithWrongAccounts
+[----------] 4 tests from TransactionTest
+
+[==========] 7 tests from 2 test suites ran.
+[  PASSED  ] 7 tests.
 ```
-## 8. Создаем пакеты локально для проверки
-```
-cmake -H. -B_build
-cmake --build _build
-cd _build
-cpack -G "TGZ"
-cpack -G "DEB"
-cpack -G "RPM"
-cd ..
-```
-Конфигурирует проект через CMake
-Собирает проект
-Создаёт пакеты локально (проверка без CI
-## 9. Создаем artifacts (скриншот)
-```
-mkdir artifacts
-sleep 20s && gnome-screenshot --file artifacts/screenshot.png
-```
+
+## Вывод
+К сожалению в силу некоторых особенностей системы мне не удалось прилинковать
+Hunter к моей сборке, от чего использовал стандарную связку GTest через submodule
