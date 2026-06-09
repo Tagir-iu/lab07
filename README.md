@@ -132,8 +132,7 @@ name: Linux CI (gcc & clang)
 on:
   push:
     branches: [ main, master ]
-    tags:
-      - 'v*'
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
 
@@ -150,12 +149,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
           fetch-depth: 0
+
+      - name: Initialize Submodules
+        run: git submodule update --init --recursive
+
+      - name: Install GTest (Logs for demo)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y googletest libgtest-dev
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
           sudo apt-get install -y cmake build-essential rpm
 
       - name: Configure
@@ -167,7 +173,7 @@ jobs:
       - name: Test
         run: ctest --test-dir _build --output-on-failure
 
-      - name: Create packages (if tag)
+      - name: Create packages
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           cd _build
@@ -175,6 +181,12 @@ jobs:
           cpack -G RPM
           cpack -G TGZ
           cpack -G ZIP
+
+      - name: Upload Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: _build/*.deb _build/*.rpm _build/*.tar.gz _build/*.zip
 ```
 
 ### 4.0 Проверка результатов
