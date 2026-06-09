@@ -20,15 +20,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
 
-      - name: Initialize GTest Submodule
-        run: git submodule update --init --recursive
+      - name: Install GTest
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y googletest libgtest-dev
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
           sudo apt-get install -y cmake build-essential rpm
 
       - name: Configure
